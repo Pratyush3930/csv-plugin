@@ -5,12 +5,13 @@ const multer = require("multer");
 const cors = require("cors");
 const app = express();
 const port = 5000;
-const bodyParser = require("body-parser");
 const convertXlsMiddleware = require("./server/middleware/xlsToCSV");
 const fileRoute = require("./server/routes/fileRoute");
+const path = require("path");
 
 // middleware to parse JSON in request bodies
-app.use(bodyParser.json());
+app.use(express.json());
+// app.use(bodyParser.urlencoded());
 
 // Enalbe CORS for all routes
 app.use(
@@ -21,11 +22,19 @@ app.use(
   })
 );
 
-console.log("Current directory:", __dirname);
+// Middleware to handle common headers
+app.use((req, res, next) => {
+  // Set common response headers
+  res.header("Content-Type", "application/json");
 
-app.use("/api/uploadFile", fileRoute);
+  // Allow credentials (cookies, HTTP authentication)
+  res.header("Access-Control-Allow-Credentials", "true");
 
-const upload2 = multer({
+  // Proceed to the next middleware
+  next();
+});
+
+const upload = multer({
   fileFilter: function (req, file, callback) {
     var ext = path.extname(file.originalname);
     if (ext !== ".xls" && ext !== ".tsv" && ext !== ".csv" && ext !== ".xlsx") {
@@ -40,21 +49,23 @@ const upload2 = multer({
 // above the upload destination in disk has not been specified
 // the below function is used to perfom operations on the provided file
 // so no destination required
-app.use("/api/uploadFile", upload2.single("file"), convertXlsMiddleware);
+app.use("/api/convertFile", upload.single("file"), convertXlsMiddleware);
 // NOTE:  we do not specify destination if we want to use buffer property
 // in a function using multer
+console.log("Current directory:", __dirname);
 
-// Middleware to handle common headers
-app.use((req, res, next) => {
-  // Set common response headers
-  res.header("Content-Type", "application/json");
-
-  // Allow credentials (cookies, HTTP authentication)
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  // Proceed to the next middleware
-  next();
+app.use("/api/convertFile", (req, res, next) => {
+  try {
+    data = req.jsonData;
+    console.log(data)
+    res.status(200).send(data);
+    next();
+  } catch (error) {
+    console.log(error);
+  }
 });
+
+app.use("/api/uploadFile", fileRoute);
 
 app.get("/api/data", (req, res) => {
   res.json({ message: "Hello from the Express backend!" });
