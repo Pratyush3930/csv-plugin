@@ -57,6 +57,14 @@ const Table = ({
     setIsHeader(false);
   };
 
+  const undoRedoCellEditing = true;
+
+  // restricts the number of undo / redo steps to 5
+  const undoRedoCellEditingLimit = 10;
+
+  // enables flashing to help see cell changes
+  const enableCellChangeFlash = true;
+
   return (
     <>
       {isLoading &&
@@ -159,6 +167,9 @@ const Table = ({
                     defaultColDef={defaultColDef}
                     rowSelection="multiple"
                     animateRows={true}
+                    enableCellChangeFlash={enableCellChangeFlash}
+                    undoRedoCellEditing={undoRedoCellEditing}
+                    undoRedoCellEditingLimit={undoRedoCellEditingLimit}
                   />
                 </div>
               </div>
