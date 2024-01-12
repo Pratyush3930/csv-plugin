@@ -32,20 +32,25 @@ function App() {
       await axios.post(`${apiUrl}/convertFile`, data).then((res) => {
         setJsonData(res.data);
         setRowData(res.data);
+        //   const lastValidation = res.data.map((innerArray) => {
+        //       return innerArray.map((eachData) => console.log(eachData));
+        //   })
+        // setNewRowData(lastValidation);
         setKeys(Object.keys(res.data[0]));
         const findKey = Object.keys(res.data[0]).map((eachKey) => ({
           field: eachKey,
         }));
-        setTimeout(() => {
+        // setTimeout(() => {
           setColDefs(findKey);
           setIsLoading(false);
-        }, 2000);
+        // }, 2000);
         setSubmitted(true);
       });
     } catch (error) {
       console.log(error);
     }
   };
+  
   
   const handleNewColumnDefn = (e) => {
     e.preventDefault();
@@ -65,8 +70,6 @@ function App() {
         newColumns.push(column);
         i++;
       }
-      console.log("object.keys", Object.keys(jsonData[0]));
-      console.log("newcolumn", newKeys);
       setColDefs(newColumns);
       // below is mapping of oldKeys to newKeys
       const newKeyMapping = Object.keys(jsonData[0]).reduce(
@@ -76,8 +79,6 @@ function App() {
         },
         {}
       );
-      console.log("newkeymapping", newKeyMapping);
-      console.log("rowdata lai map grna", rowData[0]);
       const updatedData = jsonData.map((eachData) => {
         const updatedObject = {};
         Object.keys(eachData).forEach((oldKey) => {
@@ -86,7 +87,6 @@ function App() {
         });
         return updatedObject;
       });
-      console.log("updateddata", updatedData);
       setRowData(updatedData);
       setIsHeader(true);
     } catch (error) {
@@ -110,7 +110,7 @@ function App() {
               placeholder="file"
               onChange={(e) => handleChange(e)}
             />
-            <button className="btn border border-black text-zinc-800">
+            <button className="btn blue-btn">
               Submit
             </button>
           </form>

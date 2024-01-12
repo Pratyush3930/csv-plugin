@@ -5,7 +5,7 @@ import { ExcelExportModule } from "@ag-grid-enterprise/excel-export";
 import { AgGridReact } from "ag-grid-react"; // React Grid Logic
 import "ag-grid-community/styles/ag-grid.css"; // Core CSS
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
-
+import Validate from "../../utils/gridValidation/Validate";
 // Register the ExcelExportModule
 ModuleRegistry.registerModules([ExcelExportModule]);
 
@@ -20,6 +20,7 @@ const Table = ({
 }) => {
   const [renderQuestion, setRenderQuestion] = useState(true);
   // const [editHeader, setEditHeader] = useState(false);
+  const [columnDataTypes, setColumnDataTypes] = React.useState({});
 
   const gridRef = useRef();
   // default values to be used in all columns of AgGrid
@@ -65,6 +66,7 @@ const Table = ({
   // enables flashing to help see cell changes
   const enableCellChangeFlash = true;
 
+  const arrayOfValues = colDefs.map((obj) => obj.field);
   return (
     <>
       {isLoading &&
@@ -97,6 +99,9 @@ const Table = ({
               </div>
             </div>
           )}
+          {console.log(colDefs)}
+          {console.log("values", arrayOfValues)}
+          {console.log("row data is:", rowData)}
           {!renderQuestion && !isHeader && (
             <div className="w-full flex flex-col items-center">
               <h3 className="mb-3">
@@ -120,6 +125,7 @@ const Table = ({
                           <input
                             // type={typeof rowdata[0][columns[newColKey]]}
                             type="string"
+                            // since the name and id cannot start with a number so added val in front of it
                             name={"val" + newColKey}
                             id={"val" + newColKey}
                             className="w-full max-w-24 min-w-12 border-none outline-none"
@@ -135,21 +141,27 @@ const Table = ({
           )}
           <>
             {!renderQuestion && isHeader && (
-              <div className="flex gap-4 items-center justify-center mb-2">
+              <div className="flex gap-4 items-center justify-center mb-5">
                 <button
                   onClick={() => onBtExport()}
-                  className="btn blue-btn mb-3"
+                  className="btn blue-btn "
                 >
                   Export to CSV
                 </button>
                 <button
-                  className="btn mb-3 font-bold border border-black"
+                  className="btn font-bold border border-black"
                   onClick={() => {
                     handleRejectHeader();
                   }}
                 >
                   Edit Headers
                 </button>
+                {/* to validate the column data in each column cell */}
+                <Validate
+                 columns={columns}
+                 columnDataTypes={columnDataTypes}
+                 setColumnDataTypes={setColumnDataTypes}
+                 />
               </div>
             )}
             <div className="flex justify-center items-center w-full h-full ml-4">

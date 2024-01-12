@@ -54,9 +54,10 @@ app.use("/api/convertFile", upload.single("file"), convertXlsMiddleware);
 // in a function using multer
 console.log("Current directory:", __dirname);
 
+// sends the converted file as a json response to client
 app.use("/api/convertFile", (req, res, next) => {
   try {
-    data = req.jsonData;
+    const data = req.jsonData;
     console.log(data)
     res.status(200).send(data);
     next();

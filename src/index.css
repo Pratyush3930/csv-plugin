@@ -27,3 +27,7 @@ code {
 .blue-btn {
   @apply  bg-blue-500 hover:bg-blue-700 text-white;
 }
+
+.black-btn {
+  @apply border border-black bg-white hover:bg-gray-200;
+}
