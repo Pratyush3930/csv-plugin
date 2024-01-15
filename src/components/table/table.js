@@ -1,8 +1,11 @@
-import React, { useRef, useState } from "react";
+// tomorrow use valuesetter and valuegetter logic to change the values in ur table accordingly and to verify the data
+
+import React, {  useRef, useState } from "react";
 import "./table.css";
 import { ModuleRegistry } from "@ag-grid-community/core";
 import { ExcelExportModule } from "@ag-grid-enterprise/excel-export";
 import { AgGridReact } from "ag-grid-react"; // React Grid Logic
+// import { useGridApi } from 'ag-grid-react';
 import "ag-grid-community/styles/ag-grid.css"; // Core CSS
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
 import Validate from "../../utils/gridValidation/Validate";
@@ -14,14 +17,19 @@ const Table = ({
   isHeader,
   rowData,
   colDefs,
+  setColDefs,
   handleNewColumnDefn,
   isLoading,
   setSubmitted,
+  columnDataTypes,
+  setColumnDataTypes,
+  columnDataTypesChanged,
+  setColumnDataTypesChanged
 }) => {
   const [renderQuestion, setRenderQuestion] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   // const [editHeader, setEditHeader] = useState(false);
-  const [columnDataTypes, setColumnDataTypes] = React.useState({});
-
+  // to validate the data cells
   const gridRef = useRef();
   // default values to be used in all columns of AgGrid
   const defaultColDef = React.useMemo(
@@ -31,11 +39,12 @@ const Table = ({
       flex: 1,
       sortable: true,
       filter: true, // Enable filtering on all columns
+      minWidth: 100,
     }),
     []
   );
+
   const onBtExport = () => {
-    console.log("first");
     try {
       gridRef.current.api.exportDataAsCsv();
       setSubmitted(false);
@@ -43,15 +52,13 @@ const Table = ({
       console.log(error);
     }
   };
-  // Check if theres any data
-  if (!rowData || rowData.length === 0) {
-    return <div>No data available.</div>;
-  }
 
   // Extract column headers from the first object in rowdata
-  const columns = Object.keys(rowData[0]);
+  const columns = Object?.keys(rowData[0]);
   let newColKey = 0;
   // new column key
+
+  // Check if theres any data
 
   const handleRejectHeader = () => {
     setRenderQuestion(false);
@@ -66,7 +73,10 @@ const Table = ({
   // enables flashing to help see cell changes
   const enableCellChangeFlash = true;
 
-  const arrayOfValues = colDefs.map((obj) => obj.field);
+  // const arrayOfValues = colDefs.map((obj) => obj.field);
+
+  
+
   return (
     <>
       {isLoading &&
@@ -99,9 +109,10 @@ const Table = ({
               </div>
             </div>
           )}
-          {console.log(colDefs)}
+          
+          {/* {console.log(colDefs)}
           {console.log("values", arrayOfValues)}
-          {console.log("row data is:", rowData)}
+          {console.log("row data is:", rowData)} */}
           {!renderQuestion && !isHeader && (
             <div className="w-full flex flex-col items-center">
               <h3 className="mb-3">
@@ -142,26 +153,37 @@ const Table = ({
           <>
             {!renderQuestion && isHeader && (
               <div className="flex gap-4 items-center justify-center mb-5">
-                <button
-                  onClick={() => onBtExport()}
-                  className="btn blue-btn "
-                >
+                <button onClick={() => onBtExport()} className="btn blue-btn ">
                   Export to CSV
                 </button>
                 <button
                   className="btn font-bold border border-black"
                   onClick={() => {
                     handleRejectHeader();
+                    const columnApi = gridRef.current.api;
+                    const allColumns = columnApi.getColumns();
+                    allColumns.forEach((column) => {
+                      console.log("Column ID:", column.getColId());
+                      console.log(
+                        "Column Header:",
+                        column.getColDef().headerName
+                      );
+                      console.log("Column Field:", column.getColDef().field);
+                      // Add more column-related information as needed
+                    });
                   }}
                 >
                   Edit Headers
                 </button>
-                {/* to validate the column data in each column cell */}
+                {/* to validate the 
+                 data in each column cell */}
                 <Validate
-                 columns={columns}
-                 columnDataTypes={columnDataTypes}
-                 setColumnDataTypes={setColumnDataTypes}
-                 />
+                  columns={columns}
+                  columnDataTypes={columnDataTypes}
+                  setColumnDataTypes={setColumnDataTypes}
+                  setColumnDataTypesChanged={setColumnDataTypesChanged}
+                  // onGridReady={handleGridReady}
+                />
               </div>
             )}
             <div className="flex justify-center items-center w-full h-full ml-4">
@@ -182,6 +204,7 @@ const Table = ({
                     enableCellChangeFlash={enableCellChangeFlash}
                     undoRedoCellEditing={undoRedoCellEditing}
                     undoRedoCellEditingLimit={undoRedoCellEditingLimit}
+                    // onGridReady={handleGridReady}
                   />
                 </div>
               </div>

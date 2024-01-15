@@ -1,6 +1,8 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
 import Modal from "@mui/material/Modal";
+import myContext from "../context/myContext";
+import { useContext } from "react";
 
 const style = {
   position: "absolute",
@@ -13,10 +15,12 @@ const style = {
   p: 4,
 };
 
-const Validate = ({ columns,columnDataTypes, setColumnDataTypes }) => {
+const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTypesChanged }) => {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+
+  const {forceRerender} = useContext(myContext);
 
   const handleSelectChange = (columnName, dataType) => {
     setColumnDataTypes((prevDataTypes) => ({
@@ -27,8 +31,10 @@ const Validate = ({ columns,columnDataTypes, setColumnDataTypes }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setColumnDataTypesChanged(true);
     console.log(columnDataTypes);
   };
+
   return (
     <>
       <button
@@ -70,7 +76,7 @@ const Validate = ({ columns,columnDataTypes, setColumnDataTypes }) => {
                 ))}
               </div>
               <div className="flex w-full justify-center x mt-6">
-              <button type="submit" className="btn black-btn">
+              <button type="submit" className="btn black-btn" onClick={()=> forceRerender()}>
                 Submit
               </button>
               </div>
