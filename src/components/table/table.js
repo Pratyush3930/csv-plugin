@@ -160,17 +160,17 @@ const Table = ({
                   className="btn font-bold border border-black"
                   onClick={() => {
                     handleRejectHeader();
-                    const columnApi = gridRef.current.api;
-                    const allColumns = columnApi.getColumns();
-                    allColumns.forEach((column) => {
-                      console.log("Column ID:", column.getColId());
-                      console.log(
-                        "Column Header:",
-                        column.getColDef().headerName
-                      );
-                      console.log("Column Field:", column.getColDef().field);
-                      // Add more column-related information as needed
-                    });
+                    // const columnApi = gridRef.current.api;
+                    // const allColumns = columnApi.getColumns();
+                    // allColumns.forEach((column) => {
+                    //   console.log("Column ID:", column.getColId());
+                    //   console.log(
+                    //     "Column Header:",
+                    //     column.getColDef().headerName
+                    //   );
+                    //   console.log("Column Field:", column.getColDef().field);
+                    //   // Add more column-related information as needed
+                    // });
                   }}
                 >
                   Edit Headers
@@ -183,6 +183,7 @@ const Table = ({
                   setColumnDataTypes={setColumnDataTypes}
                   setColumnDataTypesChanged={setColumnDataTypesChanged}
                   // onGridReady={handleGridReady}
+                  setReloadKey={setReloadKey}
                 />
               </div>
             )}
@@ -195,6 +196,7 @@ const Table = ({
                 >
                   {/* The AG Grid component */}
                   <AgGridReact
+                    key={reloadKey}
                     ref={gridRef}
                     rowData={rowData}
                     columnDefs={colDefs}

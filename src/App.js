@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { useState} from "react";
@@ -19,6 +19,7 @@ function App() {
   const [submitted, setSubmitted] = useState(false);
   const [columnDataTypesChanged, setColumnDataTypesChanged] = useState(false);
   const [columnDataTypes, setColumnDataTypes] = useState({});
+  const [runCustomRenderer, setRunCustomRenderer] = useState(false);
 
   // const [editHeader, setEditHeader] = useState(false);
 
@@ -30,71 +31,89 @@ function App() {
   };
 
 
-  const validation = (tableValue) => {
-    if (columnDataTypesChanged) {
-      // Iterate over columns and their data types
-      for (const [column, dataType] of Object.entries(columnDataTypes)) {
-        // Iterate over rows
-        for (const row of rowData) {
-          // Check if the current cell matches the specified value
-          if (row[column] === tableValue) {
-            switch (dataType) {
-              case "string":
-                if (typeof row[column] !== "string") {
-                  return false;
+  const customCellRenderer = React.useCallback((params) => {
+    if(!runCustomRenderer){
+      return params.value;
+    }
+    const value = params.value;
+    const columnName = params.colDef.field;
+    console.log('each column name is:', columnName)
+  
+    // Move validation inside the useCallback callback
+    const validation = (tableValue, currentColumnName) => {
+      if (columnDataTypesChanged) {
+        // Iterate over columns and their data types
+        for (const [column, dataType] of Object.entries(columnDataTypes)) {
+          // Check if the current column matches the intended column
+          if (column === currentColumnName) {
+            // Iterate over rows
+            for (const row of rowData) {
+              // Check if the current cell matches the specified value
+              if (row[column] === tableValue) {
+                const isValidEmail = (email) => {
+                  // Email validation logic
+                  // You can use a regular expression or any other method
+                  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  return re.test(String(email).toLowerCase());
+                };
+                switch (dataType) {
+                  case "string":
+                    if (typeof row[column] !== "string" || !isNaN(Number(row[column]))) {
+                      return false;
+                    }
+                    break;
+                  case "number":
+                    if (isNaN(Number(row[column]))) {
+                      return false;
+                    }
+                    break;
+                  case "email":
+                    if (!isValidEmail(row[column])) {
+                      return false;
+                    }
+                    break;
+                  // Add cases for other data types if needed
+                  case "None":
+                    // No validation needed for "None"
+                    break;
+                  default:
+                    // No validation for other types
+                    break;
                 }
-                break;
-              case "number":
-                if (isNaN(Number(row[column]))) {
-                  return false;
-                }
-                break;
-              case "email":
-                if (!isValidEmail(row[column])) {
-                  return false;
-                }
-                break;
-              // Add cases for other data types if needed
-              case "None":
-                // No validation needed for "None"
-                break;
-              default:
-                // No validation for other types
-                break;
+              }
             }
           }
         }
       }
-    }
-    // All validations passed
-    return true;
-  };
-  
-  
-  const customCellRenderer = (params) => {
-    const value = params.value;
+      // All validations passed
+      return true;
+    };
   
     // Call the validation function and get the result
-    const valid = validation(value);
+    const valid = validation(value, columnName);
   
     // Conditionally apply styles based on the validation result
-    const cellStyle = !valid ?<FontAwesomeIcon icon={faX} style={{color: 'red'}}/>: <FontAwesomeIcon icon={faCheck} style={{color: 'green'}}/>;
+    const cellStyle = !valid ? (
+      <FontAwesomeIcon icon={faX} style={{ color: 'red' }} />
+    ) : (
+      <FontAwesomeIcon icon={faCheck} style={{ color: 'green' }} />
+    );
+  
     return (
       <div className="flex gap-1 justify-start items-center">
-        {cellStyle}{value}
+        {cellStyle}
+        {value}
       </div>
     );
-  };
+  }, [columnDataTypesChanged, columnDataTypes, rowData, runCustomRenderer]);
+  
+  
 
-  const isValidEmail = (email) => {
-    // Email validation logic
-    // You can use a regular expression or any other method
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
-  };
+ 
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setRunCustomRenderer(false);
     // creates a empty formData object
     const data = new FormData();
     // append adds a key value pair key='file' value=e.target.f[0]
@@ -124,6 +143,55 @@ function App() {
     }
   };
 
+  // const handleNewColumnDefn = (e) => {
+  //   e.preventDefault();
+  //   setRunCustomRenderer(false);
+  //   try {
+  //     let colLength = colDefs.length;
+  //     let i = 0;
+  //     let newColumns = [];
+  //     let newKeys = [];
+  //     while (i < colLength) {
+  //       // to access value dynamically below syntax
+  //       let newCol = e.target[`val${i}`]?.value;
+  //       newCol = newCol ? newCol : keys[i];
+  //       // created an array of keys in newKeys using each value of newCol
+  //       newKeys.push(newCol);
+  //       const column = { field: newCol, headerName: newCol, cellRenderer: customCellRenderer };
+  //       // pushing each column value to newColumns and creating a array of objects
+  //       newColumns.push(column);
+  //       i++;
+  //     }
+  //     console.log('newcolmn:', newColumns);
+  //     console.log('newkeys:', newKeys);
+  //     setColDefs(newColumns);
+  //     // below is mapping of oldKeys to newKeys
+     
+  //     const newKeyMapping = Object.keys(jsonData[0]).reduce(
+  //       (result, oldKey, index) => {
+  //         result[oldKey] = newKeys[index] || null;
+  //         return result;
+  //       },
+  //       {}
+  //     );
+  //     console.log("newkeymapping", newKeyMapping);
+  //     console.log("rowdata lai map grna", rowData[0]);
+  //     const updatedData = jsonData.map((eachData) => {
+  //       const updatedObject = {};
+  //       Object.keys(eachData).forEach((oldKey) => {
+  //         const newKey = newKeyMapping[oldKey];
+  //         updatedObject[newKey] = eachData[oldKey];
+  //       });
+  //       return updatedObject;
+  //     });
+  //     console.log("updateddata", updatedData);
+  //     setRowData(updatedData);
+  //     setIsHeader(true);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
+
   const handleNewColumnDefn = (e) => {
     e.preventDefault();
     try {
@@ -137,11 +205,13 @@ function App() {
         newCol = newCol ? newCol : keys[i];
         // created an array of keys in newKeys using each value of newCol
         newKeys.push(newCol);
-        const column = { field: newCol, headerName: newCol, cellRenderer: customCellRenderer };
+        const column = { field: newCol };
         // pushing each column value to newColumns and creating a array of objects
         newColumns.push(column);
         i++;
       }
+      console.log("object.keys", Object.keys(jsonData[0]));
+      console.log("newcolumn", newKeys);
       setColDefs(newColumns);
       // below is mapping of oldKeys to newKeys
       const newKeyMapping = Object.keys(jsonData[0]).reduce(
@@ -149,8 +219,10 @@ function App() {
           result[oldKey] = newKeys[index] || null;
           return result;
         },
-        {}
+        {} //it is the initial value of the accumulator that is result in this case
       );
+      console.log("newkeymapping", newKeyMapping);
+      console.log("rowdata lai map grna", rowData[0]);
       const updatedData = jsonData.map((eachData) => {
         const updatedObject = {};
         Object.keys(eachData).forEach((oldKey) => {
@@ -159,6 +231,7 @@ function App() {
         });
         return updatedObject;
       });
+      console.log("updateddata", updatedData);
       setRowData(updatedData);
       setIsHeader(true);
     } catch (error) {
@@ -166,31 +239,36 @@ function App() {
     }
   };
 
-  const forceRerender = () => {
-    console.log('hello this is force rerender');
+  const forceRerender = React.useCallback(() => {
+    if(runCustomRenderer){
     try {
-      let colLength = colDefs.length;
-      let i = 0;
-      let newColumns = [];
-      while (i < colLength) {
-        // this is just to force a re-render
-        let newCol = keys[i];
-        // created an array of keys in newKeys using each value of newCol
-        const column = { field: newCol, headerName: newCol, cellRenderer: customCellRenderer };
-        // pushing each column value to newColumns and creating a array of objects
-        newColumns.push(column);
-        i++;
-      }
-      setColDefs(newColumns);
-    }catch(error) {
+      setColDefs((prevColDefs) => {
+        return prevColDefs.map((col) => ({
+          ...col,
+          cellRenderer: customCellRenderer
+        }));
+      });
+    } catch (error) {
       console.log(error);
     }
   }
+}, [customCellRenderer, runCustomRenderer])
+
+  // React.useEffect(() => {
+  //   forceRerender();
+  // }, [forceRerender]);
+
+  React.useEffect(() => {
+    console.log('the new col defns are:', colDefs);
+  }, [colDefs]);
+
+
   
   return (
     <myContext.Provider 
     value={{
-      forceRerender
+      forceRerender,
+      setRunCustomRenderer
     }}
     >
     <div className="App h-100">

@@ -15,12 +15,14 @@ const style = {
   p: 4,
 };
 
-const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTypesChanged }) => {
+const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTypesChanged,
+  setReloadKey
+ }) => {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const {forceRerender} = useContext(myContext);
+  const {forceRerender, setRunCustomRenderer} = useContext(myContext);
 
   const handleSelectChange = (columnName, dataType) => {
     setColumnDataTypes((prevDataTypes) => ({
@@ -32,6 +34,8 @@ const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTy
   const handleSubmit = (e) => {
     e.preventDefault();
     setColumnDataTypesChanged(true);
+    setRunCustomRenderer(true);
+    setReloadKey((key)=> key+1);
     console.log(columnDataTypes);
   };
 
