@@ -35,8 +35,6 @@ const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTy
     e.preventDefault();
     setColumnDataTypesChanged(true);
     setRunCustomRenderer(true);
-    setReloadKey((key)=> key+1);
-    console.log(columnDataTypes);
   };
 
   return (

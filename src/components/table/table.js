@@ -1,16 +1,14 @@
 // tomorrow use valuesetter and valuegetter logic to change the values in ur table accordingly and to verify the data
 
-import React, {  useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import "./table.css";
-import { ModuleRegistry } from "@ag-grid-community/core";
-import { ExcelExportModule } from "@ag-grid-enterprise/excel-export";
 import { AgGridReact } from "ag-grid-react"; // React Grid Logic
 // import { useGridApi } from 'ag-grid-react';
 import "ag-grid-community/styles/ag-grid.css"; // Core CSS
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
 import Validate from "../../utils/gridValidation/Validate";
-// Register the ExcelExportModule
-ModuleRegistry.registerModules([ExcelExportModule]);
 
 const Table = ({
   setIsHeader,
@@ -24,15 +22,16 @@ const Table = ({
   columnDataTypes,
   setColumnDataTypes,
   columnDataTypesChanged,
-  setColumnDataTypesChanged
+  setColumnDataTypesChanged,
+  setRowData
 }) => {
   const [renderQuestion, setRenderQuestion] = useState(true);
+  // const [fileExport, setFileExport] = useState('');
+  const [inputRow, setInputRow] = useState({});
   const [reloadKey, setReloadKey] = useState(0);
-  // const [editHeader, setEditHeader] = useState(false);
-  // to validate the data cells
   const gridRef = useRef();
   // default values to be used in all columns of AgGrid
-  const defaultColDef = React.useMemo(
+  const defaultColDef = React.useMemo(  //to memoize the result of a computation i.e. to avoid repeating the computation unnecessarily
     () => ({
       editable: true, //enable editing of the cells
       resizable: true,
@@ -40,13 +39,56 @@ const Table = ({
       sortable: true,
       filter: true, // Enable filtering on all columns
       minWidth: 100,
+      valueGetter: (params) => {
+  const isTopRow = params.node.rowPinned === 'top';
+  const isEditingTopRow = isTopRow && params.data === inputRow;
+  
+  if (isEditingTopRow && params.node.data[params.colDef.field] !== undefined) {
+    // If the current cell is in the editing top row, display the edited value
+    return params.node.data[params.colDef.field];
+  } else if (isTopRow && isEmptyPinnedCell(params)) {
+    // If it's the top row and the cell is empty, display the placeholder
+    return createPinnedCellPlaceholder(params);
+  } else {
+    // Otherwise, display the original value
+    return params.data[params.colDef.field];
+  }
+},
+      valueSetter: (params) => {
+        params.data[params.colDef.field] = params.newValue;
+        return true; // Allow editing for all rows, including pinned rows
+      },
     }),
-    []
+    [inputRow]
   );
 
   const onBtExport = () => {
     try {
-      gridRef.current.api.exportDataAsCsv();
+      // Get the grid API
+      const gridApi = gridRef.current.api;
+  
+      // Clone the original rowData
+      const rowDataCopy = [...rowData];
+      console.log('rowdata before shifting:',rowDataCopy)
+  
+      // Remove the top-pinned row from the cloned rowData
+      // rowDataCopy.shift(); // Remove the first row (top-pinned row)
+
+        // Params for export
+      const params = {
+        skipHeader: false,
+        columnGroups: false,
+        skipFooters: true,
+        allColumns: true,
+        onlySelected: false,
+        suppressQuotes: true,
+        fileName: "exportedData.csv",
+        sheetName: "Sheet1",
+      };
+  
+      // Export the modified data (excluding the top-pinned row)
+      // gridApi.exportDataAsCsv(params);
+  
       setSubmitted(false);
     } catch (error) {
       console.log(error);
@@ -57,8 +99,6 @@ const Table = ({
   const columns = Object?.keys(rowData[0]);
   let newColKey = 0;
   // new column key
-
-  // Check if theres any data
 
   const handleRejectHeader = () => {
     setRenderQuestion(false);
@@ -73,9 +113,58 @@ const Table = ({
   // enables flashing to help see cell changes
   const enableCellChangeFlash = true;
 
-  // const arrayOfValues = colDefs.map((obj) => obj.field);
 
-  
+//   const exportToExcel = () => {
+//     const worksheet = XLSX.utils.json_to_sheet(rowData);
+//     const workbook = XLSX.utils.book_new();
+//     XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+//     // Buffer to store the generated Excel file
+//     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+//     const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+
+//     saveAs(blob, "exportedData.xlsx");
+// };
+
+const getRowStyle = useCallback(
+  ({ node }) =>
+    node.rowPinned ? { fontWeight: 'bold', fontStyle: 'italic' } : {},
+  []
+);
+const isPinnedRowDataCompleted = useCallback((params) => {
+    if (params.rowPinned !== 'top') return;
+    return colDefs.every((def) => inputRow[def.field]);
+  }, [colDefs, inputRow]);
+
+const onCellEditingStopped = useCallback(
+  (params) => {
+    if (isPinnedRowDataCompleted(params)) {
+      setRowData([...rowData, inputRow]);
+      setInputRow({});
+    }
+  },
+  [rowData, inputRow, setRowData, isPinnedRowDataCompleted]
+);
+
+// const exportToJson = () => {
+//   const jsonData = gridRef.current.api.getDataAsJson();
+//   const jsonString = JSON.stringify(jsonData, null, 2);
+
+//   // Create a Blob from the JSON string
+//   const blob = new Blob([jsonString], { type: 'application/json' });
+//   saveAs(blob, "exportedData.json");
+// };
+
+function isEmptyPinnedCell(params) {
+  return (
+    (params.node.rowPinned === 'top' && params.value == null) ||
+    (params.node.rowPinned === 'top' && params.value === '')
+  );
+}
+
+function createPinnedCellPlaceholder({ colDef }) {
+  return colDef.field[0].toUpperCase() + colDef.field.slice(1) + '...';
+}
 
   return (
     <>
@@ -109,7 +198,7 @@ const Table = ({
               </div>
             </div>
           )}
-          
+
           {/* {console.log(colDefs)}
           {console.log("values", arrayOfValues)}
           {console.log("row data is:", rowData)} */}
@@ -153,24 +242,23 @@ const Table = ({
           <>
             {!renderQuestion && isHeader && (
               <div className="flex gap-4 items-center justify-center mb-5">
-                <button onClick={() => onBtExport()} className="btn blue-btn ">
-                  Export to CSV
-                </button>
+                <div className="btn black-btn ">
+                  <button
+                    onClick={() => onBtExport()}
+                    className="mr-2"
+                  >
+                    Export to
+                  </button>
+                  <select className="border border-black rounded-sm">
+                    <option value="CSV">CSV</option>
+                    <option value="JSON">JSON</option>
+                    <option value="Excel">Excel</option>
+                  </select>
+                </div>
                 <button
                   className="btn font-bold border border-black"
                   onClick={() => {
                     handleRejectHeader();
-                    // const columnApi = gridRef.current.api;
-                    // const allColumns = columnApi.getColumns();
-                    // allColumns.forEach((column) => {
-                    //   console.log("Column ID:", column.getColId());
-                    //   console.log(
-                    //     "Column Header:",
-                    //     column.getColDef().headerName
-                    //   );
-                    //   console.log("Column Field:", column.getColDef().field);
-                    //   // Add more column-related information as needed
-                    // });
                   }}
                 >
                   Edit Headers
@@ -195,6 +283,7 @@ const Table = ({
                   style={{ height: 400, minWidth: 500 }}
                 >
                   {/* The AG Grid component */}
+                  {console.log(rowData)}
                   <AgGridReact
                     key={reloadKey}
                     ref={gridRef}
@@ -206,7 +295,9 @@ const Table = ({
                     enableCellChangeFlash={enableCellChangeFlash}
                     undoRedoCellEditing={undoRedoCellEditing}
                     undoRedoCellEditingLimit={undoRedoCellEditingLimit}
-                    // onGridReady={handleGridReady}
+                    onCellEditingStopped={onCellEditingStopped}
+                    pinnedTopRowData={[inputRow]}
+                    getRowStyle={getRowStyle}
                   />
                 </div>
               </div>

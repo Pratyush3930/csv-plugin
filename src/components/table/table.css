@@ -5,3 +5,10 @@
     flex-direction: column;
     justify-content: center;
 }
+
+.ag-theme-quartz-dark .ag-header-cell-text {
+    width: 100%;
+}
+.ag-theme-quartz-dark .ag-header-cell {
+    text-align: center;
+}
