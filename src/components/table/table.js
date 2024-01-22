@@ -1,14 +1,11 @@
-// tomorrow use valuesetter and valuegetter logic to change the values in ur table accordingly and to verify the data
-
 import React, { useCallback, useRef, useState } from "react";
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import "./table.css";
 import { AgGridReact } from "ag-grid-react"; // React Grid Logic
-// import { useGridApi } from 'ag-grid-react';
 import "ag-grid-community/styles/ag-grid.css"; // Core CSS
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Theme
 import Validate from "../../utils/gridValidation/Validate";
+import { fileExports } from "../../utils/fileExport/fileExport";
+import { CSVLink } from "react-csv";
 
 const Table = ({
   setIsHeader,
@@ -21,17 +18,19 @@ const Table = ({
   setSubmitted,
   columnDataTypes,
   setColumnDataTypes,
-  columnDataTypesChanged,
   setColumnDataTypesChanged,
-  setRowData
+  setRowData,
+  handleCellClicked,
+  handleDeleteSelectedColumn,
 }) => {
   const [renderQuestion, setRenderQuestion] = useState(true);
-  // const [fileExport, setFileExport] = useState('');
+  const [fileExport, setFileExport] = useState("CSV");
+  const [selectedRows, setSelectedRows] = useState([]);
   const [inputRow, setInputRow] = useState({});
-  const [reloadKey, setReloadKey] = useState(0);
   const gridRef = useRef();
   // default values to be used in all columns of AgGrid
-  const defaultColDef = React.useMemo(  //to memoize the result of a computation i.e. to avoid repeating the computation unnecessarily
+  const defaultColDef = React.useMemo(
+    //to memoize the result of a computation i.e. to avoid repeating the computation unnecessarily
     () => ({
       editable: true, //enable editing of the cells
       resizable: true,
@@ -40,20 +39,23 @@ const Table = ({
       filter: true, // Enable filtering on all columns
       minWidth: 100,
       valueGetter: (params) => {
-  const isTopRow = params.node.rowPinned === 'top';
-  const isEditingTopRow = isTopRow && params.data === inputRow;
-  
-  if (isEditingTopRow && params.node.data[params.colDef.field] !== undefined) {
-    // If the current cell is in the editing top row, display the edited value
-    return params.node.data[params.colDef.field];
-  } else if (isTopRow && isEmptyPinnedCell(params)) {
-    // If it's the top row and the cell is empty, display the placeholder
-    return createPinnedCellPlaceholder(params);
-  } else {
-    // Otherwise, display the original value
-    return params.data[params.colDef.field];
-  }
-},
+        const isTopRow = params.node.rowPinned === "top";
+        const isEditingTopRow = isTopRow && params.data === inputRow;
+
+        if (
+          isEditingTopRow &&
+          params.node.data[params.colDef.field] !== undefined
+        ) {
+          // If the current cell is in the editing top row, display the edited value
+          return params.node.data[params.colDef.field];
+        } else if (isTopRow && isEmptyPinnedCell(params)) {
+          // If it's the top row and the cell is empty, display the placeholder
+          return createPinnedCellPlaceholder(params);
+        } else {
+          // Otherwise, display the original value
+          return params.data[params.colDef.field];
+        }
+      },
       valueSetter: (params) => {
         params.data[params.colDef.field] = params.newValue;
         return true; // Allow editing for all rows, including pinned rows
@@ -64,31 +66,8 @@ const Table = ({
 
   const onBtExport = () => {
     try {
-      // Get the grid API
-      const gridApi = gridRef.current.api;
-  
-      // Clone the original rowData
-      const rowDataCopy = [...rowData];
-      console.log('rowdata before shifting:',rowDataCopy)
-  
-      // Remove the top-pinned row from the cloned rowData
-      // rowDataCopy.shift(); // Remove the first row (top-pinned row)
-
-        // Params for export
-      const params = {
-        skipHeader: false,
-        columnGroups: false,
-        skipFooters: true,
-        allColumns: true,
-        onlySelected: false,
-        suppressQuotes: true,
-        fileName: "exportedData.csv",
-        sheetName: "Sheet1",
-      };
-  
-      // Export the modified data (excluding the top-pinned row)
-      // gridApi.exportDataAsCsv(params);
-  
+      console.log("fileexport", fileExport);
+      fileExports(fileExport, rowData);
       setSubmitted(false);
     } catch (error) {
       console.log(error);
@@ -97,6 +76,9 @@ const Table = ({
 
   // Extract column headers from the first object in rowdata
   const columns = Object?.keys(rowData[0]);
+  console.log('rowdata is',rowData);
+  console.log('column is', columns);
+  console.log('column data is', colDefs);
   let newColKey = 0;
   // new column key
 
@@ -113,58 +95,70 @@ const Table = ({
   // enables flashing to help see cell changes
   const enableCellChangeFlash = true;
 
-
-//   const exportToExcel = () => {
-//     const worksheet = XLSX.utils.json_to_sheet(rowData);
-//     const workbook = XLSX.utils.book_new();
-//     XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-
-//     // Buffer to store the generated Excel file
-//     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-//     const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-
-//     saveAs(blob, "exportedData.xlsx");
-// };
-
-const getRowStyle = useCallback(
-  ({ node }) =>
-    node.rowPinned ? { fontWeight: 'bold', fontStyle: 'italic' } : {},
-  []
-);
-const isPinnedRowDataCompleted = useCallback((params) => {
-    if (params.rowPinned !== 'top') return;
-    return colDefs.every((def) => inputRow[def.field]);
-  }, [colDefs, inputRow]);
-
-const onCellEditingStopped = useCallback(
-  (params) => {
-    if (isPinnedRowDataCompleted(params)) {
-      setRowData([...rowData, inputRow]);
-      setInputRow({});
-    }
-  },
-  [rowData, inputRow, setRowData, isPinnedRowDataCompleted]
-);
-
-// const exportToJson = () => {
-//   const jsonData = gridRef.current.api.getDataAsJson();
-//   const jsonString = JSON.stringify(jsonData, null, 2);
-
-//   // Create a Blob from the JSON string
-//   const blob = new Blob([jsonString], { type: 'application/json' });
-//   saveAs(blob, "exportedData.json");
-// };
-
-function isEmptyPinnedCell(params) {
-  return (
-    (params.node.rowPinned === 'top' && params.value == null) ||
-    (params.node.rowPinned === 'top' && params.value === '')
+  const getRowStyle = useCallback(
+    ({ node }) =>
+      node.rowPinned ? { fontWeight: "bold", fontStyle: "italic" } : {},
+    []
   );
-}
+  const isPinnedRowDataCompleted = useCallback(
+    (params) => {
+      if (params.rowPinned !== "top") return;
+      return colDefs.every((def) => inputRow[def.field]);
+    },
+    [colDefs, inputRow]
+  );
 
-function createPinnedCellPlaceholder({ colDef }) {
-  return colDef.field[0].toUpperCase() + colDef.field.slice(1) + '...';
-}
+  const onCellEditingStopped = useCallback(
+    (params) => {
+      if (isPinnedRowDataCompleted(params)) {
+        setRowData([...rowData, inputRow]);
+        setInputRow({});
+      }
+    },
+    [rowData, inputRow, setRowData, isPinnedRowDataCompleted]
+  );
+
+  function isEmptyPinnedCell(params) {
+    return (
+      (params.node.rowPinned === "top" && params.value == null) ||
+      (params.node.rowPinned === "top" && params.value === "")
+    );
+  }
+
+  function createPinnedCellPlaceholder({ colDef }) {
+    return colDef.field[0].toUpperCase() + colDef.field.slice(1) + "...";
+  }
+
+  const onGridReady = (params) => {
+    const gridApi = params.api;
+
+    // Add an event listener for row selection changes
+    gridApi.addEventListener("rowSelected", onRowSelected);
+  };
+
+  const onRowSelected = useCallback((event) => {
+    // Check if the row is selected
+    if (event.node.isSelected()) {
+      // Add the row data to the selectedRows state
+      setSelectedRows((prevSelectedRows) => [...prevSelectedRows, event.data]);
+    } else {
+      // Remove the row data from the selectedRows state
+      setSelectedRows((prevSelectedRows) =>
+        prevSelectedRows.filter((row) => row !== event.data)
+      );
+    }
+  }, []);
+
+  const handleDeleteRows = () => {
+    // Filter the original rowData array to exclude selected rows
+    const updatedRowData = rowData.filter((row) => !selectedRows.includes(row));
+
+    // Update the rowData state with the new data
+    setRowData(updatedRowData);
+
+    // Clear the selectedRows state
+    setSelectedRows([]);
+  };
 
   return (
     <>
@@ -198,10 +192,6 @@ function createPinnedCellPlaceholder({ colDef }) {
               </div>
             </div>
           )}
-
-          {/* {console.log(colDefs)}
-          {console.log("values", arrayOfValues)}
-          {console.log("row data is:", rowData)} */}
           {!renderQuestion && !isHeader && (
             <div className="w-full flex flex-col items-center">
               <h3 className="mb-3">
@@ -223,7 +213,6 @@ function createPinnedCellPlaceholder({ colDef }) {
                           className="border-blue-950 border-2 shrink"
                         >
                           <input
-                            // type={typeof rowdata[0][columns[newColKey]]}
                             type="string"
                             // since the name and id cannot start with a number so added val in front of it
                             name={"val" + newColKey}
@@ -242,14 +231,41 @@ function createPinnedCellPlaceholder({ colDef }) {
           <>
             {!renderQuestion && isHeader && (
               <div className="flex gap-4 items-center justify-center mb-5">
-                <div className="btn black-btn ">
-                  <button
-                    onClick={() => onBtExport()}
-                    className="mr-2"
+                <button
+                  className="btn black-btn"
+                  onClick={() => {
+                    handleDeleteRows();
+                  }}
+                >
+                  Delete selected row
+                </button>
+                <button
+                  onClick={handleDeleteSelectedColumn}
+                  className="btn black-btn"
+                >
+                  Delete Selected Column
+                </button>
+                <div className="btn black-btn">
+                  {fileExport === "CSV" ? (
+                    <CSVLink
+                      data={rowData}
+                      filename={"exportedData.csv"}
+                      target="_blank"
+                      className="mr-2"
+                    >
+                      Export to
+                    </CSVLink>
+                  ) : (
+                    <button onClick={() => onBtExport()} className="mr-2">
+                      Export to
+                    </button>
+                  )}
+                  <select
+                    className="border border-black rounded-sm"
+                    onChange={(e) => {
+                      setFileExport(e.target.value);
+                    }}
                   >
-                    Export to
-                  </button>
-                  <select className="border border-black rounded-sm">
                     <option value="CSV">CSV</option>
                     <option value="JSON">JSON</option>
                     <option value="Excel">Excel</option>
@@ -270,8 +286,6 @@ function createPinnedCellPlaceholder({ colDef }) {
                   columnDataTypes={columnDataTypes}
                   setColumnDataTypes={setColumnDataTypes}
                   setColumnDataTypesChanged={setColumnDataTypesChanged}
-                  // onGridReady={handleGridReady}
-                  setReloadKey={setReloadKey}
                 />
               </div>
             )}
@@ -283,9 +297,8 @@ function createPinnedCellPlaceholder({ colDef }) {
                   style={{ height: 400, minWidth: 500 }}
                 >
                   {/* The AG Grid component */}
-                  {console.log(rowData)}
                   <AgGridReact
-                    key={reloadKey}
+                    onGridReady={onGridReady}
                     ref={gridRef}
                     rowData={rowData}
                     columnDefs={colDefs}
@@ -298,6 +311,7 @@ function createPinnedCellPlaceholder({ colDef }) {
                     onCellEditingStopped={onCellEditingStopped}
                     pinnedTopRowData={[inputRow]}
                     getRowStyle={getRowStyle}
+                    onCellClicked={handleCellClicked}
                   />
                 </div>
               </div>

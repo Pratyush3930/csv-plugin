@@ -15,8 +15,7 @@ const style = {
   p: 4,
 };
 
-const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTypesChanged,
-  setReloadKey
+const Validate = ({ columns,columnDataTypes, setColumnDataTypes, setColumnDataTypesChanged
  }) => {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);

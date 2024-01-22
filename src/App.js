@@ -19,6 +19,7 @@ function App() {
   const [columnDataTypesChanged, setColumnDataTypesChanged] = useState(false);
   const [columnDataTypes, setColumnDataTypes] = useState({});
   const [runCustomRenderer, setRunCustomRenderer] = useState(false);
+  const [clickedCell, setClickedCell] = useState(null);
 
   const apiUrl = "http://localhost:5000/api";
 
@@ -28,7 +29,7 @@ function App() {
 
   const customCellRenderer = React.useCallback(
     (params) => {
-      if (!runCustomRenderer) {
+      if (!runCustomRenderer || params.node.rowPinned === "top") {
         return params.value;
       }
       const value = params.value;
@@ -129,6 +130,7 @@ function App() {
         setIsLoading(false);
         // }, 2000);
         setSubmitted(true);
+        forceRerender();
       });
     } catch (error) {
       console.log(error);
@@ -137,6 +139,7 @@ function App() {
 
   const handleNewColumnDefn = (e) => {
     e.preventDefault();
+    setRunCustomRenderer(false);
     try {
       let colLength = colDefs.length;
       let i = 0;
@@ -184,6 +187,8 @@ function App() {
         return updatedObject;
       });
       setRowData(updatedData);
+      // Call forceRerender after setting the new column definitions
+      forceRerender();
       setIsHeader(true);
     } catch (error) {
       console.log(error);
@@ -191,7 +196,7 @@ function App() {
   };
 
   const forceRerender = React.useCallback(() => {
-    if (runCustomRenderer) {
+    // if (runCustomRenderer) {
       //just to be safe
       try {
         setColDefs((prevColDefs) => {
@@ -203,16 +208,62 @@ function App() {
       } catch (error) {
         console.log(error);
       }
-    } else {
-      return;
-    }
-  }, [customCellRenderer, runCustomRenderer]);
+    // } else {
+    //   return;
+    // }
+  }, [customCellRenderer]);
 
   React.useEffect(() => {
     forceRerender();
+    console.log('first');
   }, [forceRerender]);
   // used this to update execute forcererender for data validation
   // the data validation submit button needs two clicks to validate so had to use this for a single click
+
+  const handleCellClicked = React.useCallback((params) => {
+    // Update the state when a cell is left-clicked
+    setClickedCell({
+      column: params.colDef,
+      data: params.data,
+    });
+  }, []);
+
+  const handleDeleteSelectedColumn = () => {
+    // Check if a cell has been left-clicked
+    if (clickedCell) {
+      const { column } = clickedCell;
+
+      // Find the index of the clicked column in colDefs
+      const columnIndex = colDefs.findIndex(
+        // returns -1 if no index was found
+        (col) => col.field === column.field
+      );
+
+      if (columnIndex !== -1) {
+        // Create a new array of colDefs without the selected column
+        const updatedColDefs = [...colDefs];
+        // splice is used for adding or removing a part of array
+        // the below splice removes the 1 element at given column index value
+        updatedColDefs.splice(columnIndex, 1);
+
+        // Set the updated colDefs in the state
+        setColDefs(updatedColDefs);
+
+        // Filter out the selected rows from rowData and remove the corresponding column data
+        const updatedRowData = rowData.map((row) => {
+          const updatedRow = { ...row };
+          delete updatedRow[column.field];
+          return updatedRow;
+        });
+        // Set the updated rowData in the state
+        setRowData(updatedRowData);
+        setJsonData(updatedRowData);
+
+        // Clear the clickedCell state
+        setClickedCell(null);
+      }
+    }
+  };
 
   return (
     <myContext.Provider
@@ -257,6 +308,8 @@ function App() {
             columnDataTypesChanged={columnDataTypesChanged}
             setColumnDataTypesChanged={setColumnDataTypesChanged}
             setRowData={setRowData}
+            handleDeleteSelectedColumn={handleDeleteSelectedColumn}
+            handleCellClicked={handleCellClicked}
           />
         )}
       </div>
