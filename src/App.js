@@ -21,6 +21,7 @@ function App() {
   const [runCustomRenderer, setRunCustomRenderer] = useState(false);
   const [clickedCell, setClickedCell] = useState(null);
 
+
   const apiUrl = "http://localhost:5000/api";
 
   const handleChange = (e) => {
@@ -196,8 +197,8 @@ function App() {
   };
 
   const forceRerender = React.useCallback(() => {
-    // if (runCustomRenderer) {
-      //just to be safe
+    if (runCustomRenderer) {
+      // just to be safe
       try {
         setColDefs((prevColDefs) => {
           return prevColDefs.map((col) => ({
@@ -208,10 +209,10 @@ function App() {
       } catch (error) {
         console.log(error);
       }
-    // } else {
-    //   return;
-    // }
-  }, [customCellRenderer]);
+    } else {
+      return;
+    }
+  }, [customCellRenderer, runCustomRenderer]);
 
   React.useEffect(() => {
     forceRerender();
@@ -219,14 +220,6 @@ function App() {
   }, [forceRerender]);
   // used this to update execute forcererender for data validation
   // the data validation submit button needs two clicks to validate so had to use this for a single click
-
-  const handleCellClicked = React.useCallback((params) => {
-    // Update the state when a cell is left-clicked
-    setClickedCell({
-      column: params.colDef,
-      data: params.data,
-    });
-  }, []);
 
   const handleDeleteSelectedColumn = () => {
     // Check if a cell has been left-clicked
@@ -309,7 +302,8 @@ function App() {
             setColumnDataTypesChanged={setColumnDataTypesChanged}
             setRowData={setRowData}
             handleDeleteSelectedColumn={handleDeleteSelectedColumn}
-            handleCellClicked={handleCellClicked}
+            setClickedCell={setClickedCell}
+            setJsonData={setJsonData}
           />
         )}
       </div>

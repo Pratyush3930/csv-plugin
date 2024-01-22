@@ -12,7 +12,7 @@ const Table = ({
   isHeader,
   rowData,
   colDefs,
-  setColDefs,
+  setJsonData,
   handleNewColumnDefn,
   isLoading,
   setSubmitted,
@@ -20,10 +20,11 @@ const Table = ({
   setColumnDataTypes,
   setColumnDataTypesChanged,
   setRowData,
-  handleCellClicked,
+  setClickedCell,
   handleDeleteSelectedColumn,
 }) => {
   const [renderQuestion, setRenderQuestion] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [fileExport, setFileExport] = useState("CSV");
   const [selectedRows, setSelectedRows] = useState([]);
   const [inputRow, setInputRow] = useState({});
@@ -112,6 +113,7 @@ const Table = ({
     (params) => {
       if (isPinnedRowDataCompleted(params)) {
         setRowData([...rowData, inputRow]);
+        setJsonData([...rowData, inputRow]);
         setInputRow({});
       }
     },
@@ -159,6 +161,24 @@ const Table = ({
     // Clear the selectedRows state
     setSelectedRows([]);
   };
+
+
+  const handleCellClicked = React.useCallback((params) => {
+    // Update the state when a cell is left-clicked
+    if (params.node.rowPinned === "top") {
+      // gridRef.current.api.startEditingCell({
+      //   rowIndex: params.node.rowIndex,
+      //   colKey: params.colDef.field,
+      // });
+      return;
+    }
+    setClickedCell({
+      column: params.colDef,
+      data: params.data,
+    });
+  
+    // If the clicked cell is in the pinned row, start editing it
+  }, [setClickedCell]);
 
   return (
     <>
@@ -286,6 +306,7 @@ const Table = ({
                   columnDataTypes={columnDataTypes}
                   setColumnDataTypes={setColumnDataTypes}
                   setColumnDataTypesChanged={setColumnDataTypesChanged}
+                  setReloadKey={setReloadKey}
                 />
               </div>
             )}
@@ -298,6 +319,7 @@ const Table = ({
                 >
                   {/* The AG Grid component */}
                   <AgGridReact
+                  key={reloadKey}
                     onGridReady={onGridReady}
                     ref={gridRef}
                     rowData={rowData}
